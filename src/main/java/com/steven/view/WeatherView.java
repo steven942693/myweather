@@ -1,9 +1,16 @@
 package com.steven.view;
 
+import com.alibaba.fastjson.JSON;
 import com.steven.bean.City;
 import com.steven.bean.NowWeather;
 import com.steven.spider.WeatherSpider;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
@@ -14,8 +21,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 public class WeatherView {
     private static JFrame main_frame;
@@ -27,6 +36,7 @@ public class WeatherView {
     private static SimpleDateFormat sdf;
     private static JLabel current_time;
     private static JButton sear_button;
+    private static JButton sear_button_by_ip;
 
     public static void main(String[] args) {
         try {
@@ -65,8 +75,8 @@ public class WeatherView {
         search_textField.setFont(new Font("楷体",Font.BOLD,25));
         search_textField.setColumns(10);
 //        输入城市 标签
-        JLabel input_city_name = new JLabel("  输入城市 ");
-        input_city_name.setFont(new Font("楷体",Font.BOLD,30));
+        JLabel input_city_name = new JLabel("  键入");
+        input_city_name.setFont(new Font("楷体",Font.BOLD,28));
 
 //        搜索结果下拉选项
         comboBox = new JComboBox<>();
@@ -79,6 +89,12 @@ public class WeatherView {
         current_time.setFont(new Font("楷体",Font.BOLD,30));
         current_time.setForeground(new Color(238,87,87));
 
+        //      ip自动搜索按钮
+        sear_button_by_ip = new JButton("IP定位");
+        sear_button_by_ip.setBackground(new Color(36,212,126));
+        sear_button_by_ip.setForeground(new Color(248,12,201));
+        sear_button_by_ip.setFont(new Font("楷体",Font.BOLD,20));
+
 //      搜索按钮
         sear_button = new JButton("查询");
         sear_button.setBackground(new Color(36,212,126));
@@ -89,6 +105,7 @@ public class WeatherView {
         top_pane.add(current_time);
         top_pane.add(input_city_name);
         top_pane.add(search_textField);
+        top_pane.add(sear_button_by_ip);
         top_pane.add(sear_button);
         top_pane.add(comboBox);
 
@@ -155,6 +172,59 @@ public class WeatherView {
                 }
             }
         });
+//       点击IP定位按钮开始搜索
+        sear_button_by_ip.addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                CloseableHttpClient client = HttpClients.createDefault();
+                HttpGet get = new HttpGet("http://ip.360.cn/IPShare/info");
+                get.setHeader("Host","ip.360.cn");
+                get.setHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0");
+                get.setHeader("Referer","http://ip.360.cn/");
+                String[] provinces = {
+                        "河北", "山西", "辽宁", "吉林", "黑龙江", "江苏", "浙江",
+                        "安徽", "福建", "江西", "山东", "河南", "湖北", "湖南",
+                        "广东", "海南", "四川", "贵州", "云南", "陕西", "甘肃",
+                        "青海", "台湾", "内蒙古", "广西", "西藏", "宁夏", "新疆",
+                        "北京", "天津", "上海", "重庆", "香港", "澳门"
+                };
+                ArrayList<String> provinces_list = new ArrayList<>();
+                for (String province : provinces) {
+                    provinces_list.add(province);
+                }
+
+                CloseableHttpResponse response = null;
+                try {
+                    response = client.execute(get);
+                    System.out.println(response.getStatusLine().getStatusCode());
+                    String autoLocation = "";
+                    if (response.getStatusLine().getStatusCode() == 200){
+                        HttpEntity entity = response.getEntity();
+                        String weather = EntityUtils.toString(entity,"UTF-8");
+                        Map<String,String> weather_map = JSON.parseObject(weather, Map.class);
+                        String location = weather_map.get("location");
+                        String[] splits = location.split("\\t");
+                        String city_info = splits[0];
+                        for(int end = 2;end<city_info.length();end++){
+                            if (provinces_list.contains(city_info.substring(0,end))){
+                                autoLocation = city_info.substring(end);
+//                                System.out.println(city_info.substring(end));
+                                break;
+                            }
+                        }
+                    }else {
+                        JOptionPane.showMessageDialog(main_frame,"网络异常,请保证网络通畅,然后重试!!!");
+                    }
+                    search_textField.setText(autoLocation);
+                    start_search();
+                } catch (IOException ioException) {
+                    JOptionPane.showMessageDialog(main_frame,"网络异常,请保证网络通畅,然后重试!!!");
+                    ioException.printStackTrace();
+                }
+
+            }
+        });
+
 //       点击按钮开始搜索
         sear_button.addActionListener(new AbstractAction() {
             @Override
