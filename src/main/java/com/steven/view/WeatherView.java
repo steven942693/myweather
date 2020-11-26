@@ -176,52 +176,57 @@ public class WeatherView {
         sear_button_by_ip.addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                CloseableHttpClient client = HttpClients.createDefault();
-                HttpGet get = new HttpGet("http://ip.360.cn/IPShare/info");
-                get.setHeader("Host","ip.360.cn");
-                get.setHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0");
-                get.setHeader("Referer","http://ip.360.cn/");
-                String[] provinces = {
-                        "河北", "山西", "辽宁", "吉林", "黑龙江", "江苏", "浙江",
-                        "安徽", "福建", "江西", "山东", "河南", "湖北", "湖南",
-                        "广东", "海南", "四川", "贵州", "云南", "陕西", "甘肃",
-                        "青海", "台湾", "内蒙古", "广西", "西藏", "宁夏", "新疆",
-                        "北京", "天津", "上海", "重庆", "香港", "澳门"
-                };
-                ArrayList<String> provinces_list = new ArrayList<>();
-                for (String province : provinces) {
-                    provinces_list.add(province);
-                }
-
-                CloseableHttpResponse response = null;
-                try {
-                    response = client.execute(get);
-                    System.out.println(response.getStatusLine().getStatusCode());
-                    String autoLocation = "";
-                    if (response.getStatusLine().getStatusCode() == 200){
-                        HttpEntity entity = response.getEntity();
-                        String weather = EntityUtils.toString(entity,"UTF-8");
-                        Map<String,String> weather_map = JSON.parseObject(weather, Map.class);
-                        String location = weather_map.get("location");
-                        String[] splits = location.split("\\t");
-                        String city_info = splits[0];
-                        for(int end = 2;end<city_info.length();end++){
-                            if (provinces_list.contains(city_info.substring(0,end))){
-                                autoLocation = city_info.substring(end);
-//                                System.out.println(city_info.substring(end));
-                                break;
-                            }
+                new Thread(){
+                    @Override
+                    public void run() {
+                        CloseableHttpClient client = HttpClients.createDefault();
+                        HttpGet get = new HttpGet("http://ip.360.cn/IPShare/info");
+                        get.setHeader("Host","ip.360.cn");
+                        get.setHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0");
+                        get.setHeader("Referer","http://ip.360.cn/");
+//                get.setHeader("crypt_code","B02SZv%252B4s1T8HWvei9uvKn2M2GaltxyWvGnJ6nZ2KEks%252BtdoVdcFpA2kR9IERZwO");
+                        String[] provinces = {
+                                "河北", "山西", "辽宁", "吉林", "黑龙江", "江苏", "浙江",
+                                "安徽", "福建", "江西", "山东", "河南", "湖北", "湖南",
+                                "广东", "海南", "四川", "贵州", "云南", "陕西", "甘肃",
+                                "青海", "台湾", "内蒙古", "广西", "西藏", "宁夏", "新疆",
+                                "北京", "天津", "上海", "重庆", "香港", "澳门"
+                        };
+                        ArrayList<String> provinces_list = new ArrayList<>();
+                        for (String province : provinces) {
+                            provinces_list.add(province);
                         }
-                    }else {
-                        JOptionPane.showMessageDialog(main_frame,"网络异常,请保证网络通畅,然后重试!!!");
-                    }
-                    search_textField.setText(autoLocation);
-                    start_search();
-                } catch (IOException ioException) {
-                    JOptionPane.showMessageDialog(main_frame,"网络异常,请保证网络通畅,然后重试!!!");
-                    ioException.printStackTrace();
-                }
 
+                        CloseableHttpResponse response = null;
+                        try {
+                            response = client.execute(get);
+                            System.out.println(response.getStatusLine().getStatusCode());
+                            String autoLocation = "";
+                            if (response.getStatusLine().getStatusCode() == 200){
+                                HttpEntity entity = response.getEntity();
+                                String weather = EntityUtils.toString(entity,"UTF-8");
+                                Map<String,String> weather_map = JSON.parseObject(weather, Map.class);
+                                String location = weather_map.get("location");
+                                String[] splits = location.split("\\t");
+                                String city_info = splits[0];
+                                for(int end = 2;end<city_info.length();end++){
+                                    if (provinces_list.contains(city_info.substring(0,end))){
+                                        autoLocation = city_info.substring(end);
+//                                System.out.println(city_info.substring(end));
+                                        break;
+                                    }
+                                }
+                            }else {
+                                JOptionPane.showMessageDialog(main_frame,"网络异常,请保证网络通畅,然后重试!!!");
+                            }
+                            search_textField.setText(autoLocation);
+                            start_search();
+                        } catch (IOException ioException) {
+                            JOptionPane.showMessageDialog(main_frame,"网络异常,请保证网络通畅,然后重试!!!");
+                            ioException.printStackTrace();
+                        }
+                    }
+                }.start();
             }
         });
 
