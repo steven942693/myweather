@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.steven.bean.City;
 import com.steven.bean.NowWeather;
+import com.steven.view.WeatherView;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -13,6 +14,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -106,6 +108,7 @@ public class WeatherSpider {
             weather.setHumidity(humidity);
             System.out.println("查询时间:" + obsTime + "\t温度:" + temp + "\t图标:" + icon + "\t天气:" + text + "\t风向:" + windDir + "\t风速:" + windSpeed + "\t湿度:" + humidity);
 
+            WeatherView.cacheWeathers.put(lon+lat,weather);
 //            System.out.println(now_weather_resp);
         }
 //        {"code":"200",

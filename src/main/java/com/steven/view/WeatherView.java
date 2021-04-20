@@ -21,10 +21,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class WeatherView {
     private static JFrame main_frame;
@@ -37,8 +35,10 @@ public class WeatherView {
     private static JLabel current_time;
     private static JButton sear_button;
     private static JButton sear_button_by_ip;
+    public static Map<String ,NowWeather> cacheWeathers = new HashMap<>();
 
     public static void main(String[] args) {
+
         try {
 //            去除顶部设置按钮
             UIManager.put("RootPane.setupButtonVisible",false);
@@ -165,11 +165,17 @@ public class WeatherView {
         search_textField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-//                e.VK 预定义的按键 VK_ 查看
-                int press_key = e.getKeyCode();
-                if (press_key == e.VK_ENTER){
-                    start_search();
-                }
+                new Thread(){
+                    @Override
+                    public void run() {
+                        //                e.VK 预定义的按键 VK_ 查看
+                        int press_key = e.getKeyCode();
+                        if (press_key == e.VK_ENTER){
+                            loading();
+                            start_search();
+                        }
+                    }
+                }.start();
             }
         });
 //       点击IP定位按钮开始搜索
@@ -179,6 +185,7 @@ public class WeatherView {
                 new Thread(){
                     @Override
                     public void run() {
+                        loading();
                         CloseableHttpClient client = HttpClients.createDefault();
                         HttpGet get = new HttpGet("http://ip.360.cn/IPShare/info");
                         get.setHeader("Host","ip.360.cn");
@@ -209,9 +216,14 @@ public class WeatherView {
                                 String location = weather_map.get("location");
                                 String[] splits = location.split("\\t");
                                 String city_info = splits[0];
+                                System.out.println("IP定位的城市为: "+city_info);
                                 for(int end = 2;end<city_info.length();end++){
-                                    if (provinces_list.contains(city_info.substring(0,end))){
-                                        autoLocation = city_info.substring(end);
+                                    String substring = city_info.substring(0, end);
+                                    System.out.println(substring);
+                                    if (provinces_list.contains(substring)){
+                                        String sq = city_info.substring(end + 1);
+                                        String[] cs = sq.split("市");
+                                        autoLocation = cs[1] != null?cs[1] : cs[0] ;
 //                                System.out.println(city_info.substring(end));
                                         break;
                                     }
@@ -234,7 +246,13 @@ public class WeatherView {
         sear_button.addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                start_search();
+                new Thread(){
+                    @Override
+                    public void run() {
+                        loading();
+                        start_search();
+                    }
+                }.start();
             }
         });
 
@@ -242,50 +260,51 @@ public class WeatherView {
         comboBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                loading();
                 if (comboBox.getItemCount() > 0){
 //                    当comboBox中有内容时,才处理,防止空指针
                     mid_pane.removeAll();
 //                    获取当前选中项
                     City select_city = comboBox.getItemAt(comboBox.getSelectedIndex());
-                    try {
-//                        将当前选中城市的 经纬度传递到爬虫的参数里 , 获得当前天气对象
-                        NowWeather nowWeather = new WeatherSpider().getNowWeather(select_city.getLon(), select_city.getLat());
+                    //                        将当前选中城市的 经纬度传递到爬虫的参数里 , 获得当前天气对象
+//                        NowWeather nowWeather = new WeatherSpider().getNowWeather(select_city.getLon(), select_city.getLat());
+                    if (cacheWeathers.isEmpty()){
+                        return;
+                    }
+                    NowWeather nowWeather = cacheWeathers.get(select_city.getLon() + select_city.getLat());
 //                        text 为天气
-                        JLabel text = new JLabel(nowWeather.getText(),JLabel.CENTER);
-                        text.setForeground(new Color(250,107,4));
-                        text.setFont(new Font("楷体",Font.BOLD,100));
+                    JLabel text = new JLabel(nowWeather.getText(),JLabel.CENTER);
+                    text.setForeground(new Color(250,107,4));
+                    text.setFont(new Font("楷体",Font.BOLD,100));
 //                        icon 为天气的图标编号
-                        ImageIcon icon = new ImageIcon(WeatherView.class.getResource("/weather_ico/256/"+nowWeather.getIcon() + ".png"));
-                        //icon.setImage(icon.getImage().getScaledInstance(200, 200, Image.SCALE_DEFAULT));
-                        JLabel weather_icon = new JLabel("",icon,JLabel.CENTER);
+                    ImageIcon icon = new ImageIcon(WeatherView.class.getResource("/weather_ico/256/"+nowWeather.getIcon() + ".png"));
+                    //icon.setImage(icon.getImage().getScaledInstance(200, 200, Image.SCALE_DEFAULT));
+                    JLabel weather_icon = new JLabel("",icon,JLabel.CENTER);
 //                        weather_icon.setIcon();
 //                        temp为温度
-                        JLabel temp = new JLabel(nowWeather.getTemp()+"℃", JLabel.CENTER);
-                        temp.setForeground(new Color(250,107,4));
-                        temp.setFont(new Font("楷体",Font.BOLD,70));
+                    JLabel temp = new JLabel(nowWeather.getTemp()+"℃", JLabel.CENTER);
+                    temp.setForeground(new Color(250,107,4));
+                    temp.setFont(new Font("楷体",Font.BOLD,70));
 //                        windDir为风向
-                        JLabel windDir = new JLabel(nowWeather.getWindDir(), JLabel.CENTER);
-                        windDir.setForeground(new Color(250,107,4));
-                        windDir.setFont(new Font("楷体",Font.BOLD,70));
+                    JLabel windDir = new JLabel(nowWeather.getWindDir(), JLabel.CENTER);
+                    windDir.setForeground(new Color(250,107,4));
+                    windDir.setFont(new Font("楷体",Font.BOLD,70));
 //                        windSpeed为风速
-                        JLabel windSpeed = new JLabel(nowWeather.getWindSpeed()+"km/h", JLabel.CENTER);
-                        windSpeed.setForeground(new Color(250,107,4));
-                        windSpeed.setFont(new Font("楷体",Font.BOLD,70));
+                    JLabel windSpeed = new JLabel(nowWeather.getWindSpeed()+"km/h", JLabel.CENTER);
+                    windSpeed.setForeground(new Color(250,107,4));
+                    windSpeed.setFont(new Font("楷体",Font.BOLD,70));
 //                        humidity为湿度
-                        JLabel humidity = new JLabel(nowWeather.getHumidity()+"hPa", JLabel.CENTER);
-                        humidity.setForeground(new Color(250,107,4));
-                        humidity.setFont(new Font("楷体",Font.BOLD,70));
+                    JLabel humidity = new JLabel(nowWeather.getHumidity()+"hPa", JLabel.CENTER);
+                    humidity.setForeground(new Color(250,107,4));
+                    humidity.setFont(new Font("楷体",Font.BOLD,70));
 
 //                        添加到mid_pane
-                        mid_pane.add(text);
-                        mid_pane.add(weather_icon);
-                        mid_pane.add(temp);
-                        mid_pane.add(windDir);
-                        mid_pane.add(windSpeed);
-                        mid_pane.add(humidity);
-                    } catch (IOException ioException) {
-                        ioException.printStackTrace();
-                    }
+                    mid_pane.add(text);
+                    mid_pane.add(weather_icon);
+                    mid_pane.add(temp);
+                    mid_pane.add(windDir);
+                    mid_pane.add(windSpeed);
+                    mid_pane.add(humidity);
                 }
             }
         });
@@ -293,15 +312,20 @@ public class WeatherView {
     }
 //    开始搜索天气数据
     public static void start_search(){
-//        将mid_pane 的布局切换成网格
-        mid_pane.removeAll();
-        mid_pane.setLayout(new GridLayout(2,3,20,30));
+
 //        获取输入的关键字,如果不是空的时候开始爬虫
         String text = search_textField.getText();
+
         if (StringUtils.isNotBlank(text)) {
+            System.out.println("搜索城市 : "+text);
             try {
 //                将爬取的结果封装到集合中返回
                 List<City> cities = new WeatherSpider().citySearch(text);
+                // 切换面板
+                // 将mid_pane 的布局切换成网格
+                mid_pane.removeAll();
+                mid_pane.setLayout(new GridLayout(2,3,20,30));
+
                 if (cities == null){
 //                    没有获取到时的提示信息
                     JLabel no_found_1 = new JLabel("Sorry , 没有找到您的城市!!!",JLabel.CENTER);
@@ -321,9 +345,18 @@ public class WeatherView {
                 for (final City city : cities) {
                     comboBox.addItem(city);
                 }
+
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }
         }
+    }
+
+    private static void loading(){
+        mid_pane.removeAll();
+        ImageIcon bg = new ImageIcon(WeatherView.class.getResource("/app_ico/loading.gif"));
+        JLabel bg_label = new JLabel(bg,JLabel.CENTER);
+        mid_pane.add(bg_label);
+        main_frame.repaint();
     }
 }
