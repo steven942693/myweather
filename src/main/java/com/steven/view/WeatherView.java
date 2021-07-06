@@ -199,9 +199,21 @@ public class WeatherView {
                                 "青海", "台湾", "内蒙古", "广西", "西藏", "宁夏", "新疆",
                                 "北京", "天津", "上海", "重庆", "香港", "澳门"
                         };
+                        // 直辖市
+                        String[] zxs = {
+                                "北京", "天津", "上海", "重庆"
+                        };
+                        // 自治区和特别行政区没有测试过,估计也需要额外的判断
+                        // TODO 自治区和特别行政区
+
                         ArrayList<String> provinces_list = new ArrayList<>();
                         for (String province : provinces) {
                             provinces_list.add(province);
+                        }
+
+                        ArrayList<String> zxs_list = new ArrayList<>();
+                        for (String zx : zxs) {
+                            zxs_list.add(zx);
                         }
 
                         CloseableHttpResponse response = null;
@@ -218,10 +230,16 @@ public class WeatherView {
                                 String city_info = splits[0];
                                 System.out.println("IP定位的城市为: "+city_info);
                                 for(int end = 2;end<city_info.length();end++){
-                                    String substring = city_info.substring(0, end);
-                                    System.out.println(substring);
-                                    if (provinces_list.contains(substring)){
+                                    String ZX_city = city_info.substring(0, end);
+                                    System.out.println(ZX_city);
+                                    if (provinces_list.contains(ZX_city)){
+                                        if (zxs_list.contains(ZX_city)){
+                                            autoLocation = city_info.substring(end + 1); // 直辖市已经可以切割出结果了
+                                            break;
+                                        }
+                                        // 非直辖市还要继续判断
                                         String sq = city_info.substring(end + 1);
+                                        System.out.println(sq);
                                         String[] cs = sq.split("市");
                                         autoLocation = cs[1] != null?cs[1] : cs[0] ;
 //                                System.out.println(city_info.substring(end));
